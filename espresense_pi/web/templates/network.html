@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Network</h2>
+{% if saved %}<p class="flash">Saved. Reconnecting to MQTT&hellip;</p>{% endif %}
+<form method="post">
+  <fieldset>
+    <legend>Room</legend>
+    <label>Room name
+      <input type="text" name="room_name" value="{{ room.name }}" required>
+    </label>
+    <p class="hint">Used as this node's identity and as the &lt;room&gt; segment of every MQTT topic (espresense/rooms/&lt;room&gt;/...).</p>
+  </fieldset>
+
+  <fieldset>
+    <legend>MQTT</legend>
+    <label>Server
+      <input type="text" name="mqtt_host" value="{{ mqtt.host }}" required>
+    </label>
+    <label>Port
+      <input type="number" name="mqtt_port" value="{{ mqtt.port }}" required>
+    </label>
+    <label>Username
+      <input type="text" name="mqtt_username" value="{{ mqtt.username }}">
+    </label>
+    <label>Password
+      <input type="password" name="mqtt_password" value="{{ mqtt.password }}">
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="discovery" {{ 'checked' if mqtt.discovery else '' }}>
+      Send to Home Assistant discovery topic
+    </label>
+    <label>Home Assistant discovery topic prefix
+      <input type="text" name="discovery_prefix" value="{{ mqtt.discovery_prefix }}">
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="pub_tele" {{ 'checked' if mqtt.pub_tele else '' }}>
+      Send to telemetry topic
+    </label>
+    <label class="checkbox">
+      <input type="checkbox" name="pub_devices" {{ 'checked' if mqtt.pub_devices else '' }}>
+      Send to devices topic
+    </label>
+  </fieldset>
+
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

@@ -1,0 +1,20 @@
+[Unit]
+Description=ESPresense-Pi BLE presence detection service
+After=network-online.target bluetooth.target
+Wants=network-online.target
+Requires=bluetooth.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/espresense-pi
+Environment=ESPRESENSE_PI_HOME=/opt/espresense-pi
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=-/usr/sbin/rfkill unblock bluetooth
+ExecStartPre=-/usr/bin/hciconfig hci0 up
+ExecStart=/opt/espresense-pi/venv/bin/python -m espresense_pi.main
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

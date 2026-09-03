@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Settings</h2>
+{% if saved %}<p class="flash">Saved.</p>{% endif %}
+<form method="post">
+  <fieldset>
+    <legend>Calibration</legend>
+    <label>RSSI expected from a 0dBm transmitter at 1 meter (ref_rssi)
+      <input type="number" name="ref_rssi" value="{{ ble.ref_rssi }}">
+    </label>
+    <label>RSSI expected from this node's tx power at 1m (tx_ref_rssi)
+      <input type="number" name="tx_ref_rssi" value="{{ ble.tx_ref_rssi }}">
+    </label>
+    <label>RSSI adjustment for receiver (rx_adj_rssi)
+      <input type="number" name="rx_adj_rssi" value="{{ ble.rx_adj_rssi }}">
+    </label>
+    <label>Absorption / path-loss factor
+      <input type="number" step="0.1" name="absorption" value="{{ ble.absorption }}">
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Filtering</legend>
+    <label>Maximum distance to report (m)
+      <input type="number" step="0.1" name="max_distance" value="{{ ble.max_distance }}">
+    </label>
+    <label>Report early if beacon moved more than this distance (m)
+      <input type="number" step="0.1" name="skip_distance" value="{{ ble.skip_distance }}">
+    </label>
+    <label>Skip reporting if message age is less than this (ms)
+      <input type="number" name="skip_ms" value="{{ ble.skip_ms }}">
+    </label>
+    <label>Forget beacon if not seen for (ms)
+      <input type="number" name="forget_ms" value="{{ ble.forget_ms }}">
+    </label>
+    <label>Include only sending these IDs to MQTT
+      <input type="text" name="include" value="{{ ble.include }}" placeholder="apple: ibeacon:">
+    </label>
+    <label>Exclude sending these IDs to MQTT
+      <input type="text" name="exclude" value="{{ ble.exclude }}" placeholder="generic:">
+    </label>
+    <label>Known BLE MAC addresses (no colons, space separated)
+      <input type="text" name="known_macs" value="{{ ble.known_macs }}">
+    </label>
+  </fieldset>
+
+  <fieldset>
+    <legend>Counting</legend>
+    <label>Include ID prefixes
+      <input type="text" name="count_ids" value="{{ ble.count_ids }}">
+    </label>
+    <label>Start counting devices closer than (m)
+      <input type="number" step="0.1" name="count_enter" value="{{ ble.count_enter }}">
+    </label>
+    <label>Stop counting devices farther than (m)
+      <input type="number" step="0.1" name="count_exit" value="{{ ble.count_exit }}">
+    </label>
+    <label>Include devices with age less than (ms)
+      <input type="number" name="count_ms" value="{{ ble.count_ms }}">
+    </label>
+  </fieldset>
+
+  <button type="submit">Save</button>
+</form>
+{% endblock %}

@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Devices</h2>
+
+<h3>Currently visible</h3>
+<table>
+  <thead>
+    <tr><th>Id</th><th>Name</th><th>MAC</th><th>RSSI</th><th>Distance (m)</th><th>Enroll</th></tr>
+  </thead>
+  <tbody>
+    {% for d in live_devices %}
+    <tr>
+      <td>{{ d.id }}</td>
+      <td>{{ d.name or '' }}</td>
+      <td>{{ d.mac }}</td>
+      <td>{{ d.rssi }}</td>
+      <td>{{ d.distance }}</td>
+      <td>
+        <form method="post" action="{{ url_for('enroll_device') }}" class="inline-form">
+          <input type="hidden" name="id" value="{{ d.id }}">
+          <input type="text" name="alias" placeholder="alias" value="{{ d.id }}">
+          <input type="text" name="name" placeholder="name" value="{{ d.name or '' }}">
+          <input type="number" name="rssi_at_1m" placeholder="rssi@1m" value="{{ d.rssi }}" size="4">
+          <button type="submit">Enroll</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="6">No devices seen yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h3>Enrolled devices</h3>
+<table>
+  <thead>
+    <tr><th>Id</th><th>Alias</th><th>Name</th><th>rssi@1m</th><th></th></tr>
+  </thead>
+  <tbody>
+    {% for c in configs %}
+    <tr>
+      <td>{{ c.id }}</td>
+      <td>{{ c.alias }}</td>
+      <td>{{ c.name }}</td>
+      <td>{{ c.get('rssi@1m', '') }}</td>
+      <td>
+        <form method="post" action="{{ url_for('delete_device', device_id=c.id) }}" onsubmit="return confirm('Remove this enrollment?');">
+          <button type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    {% else %}
+    <tr><td colspan="5">No enrolled devices.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}

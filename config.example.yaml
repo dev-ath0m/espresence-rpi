@@ -1,0 +1,39 @@
+# ESPresense-Pi configuration.
+#
+# Copy this file to config.yaml (the install script does this
+# automatically) and edit it, or just use the web configuration UI --
+# it reads and writes this same file.
+room:
+  name: raspberrypi
+
+mqtt:
+  host: 192.168.178.6
+  port: 1883
+  username: ""
+  password: ""
+  base_topic: espresense
+  discovery: true
+  discovery_prefix: homeassistant
+  pub_tele: true
+  pub_devices: true
+
+ble:
+  ref_rssi: -65
+  tx_ref_rssi: -59
+  absorption: 2.7
+  rx_adj_rssi: 0
+  max_distance: 16.0
+  skip_distance: 0.5
+  skip_ms: 5000
+  forget_ms: 150000
+  include: ""
+  exclude: ""
+  known_macs: ""
+  count_ids: ""
+  count_enter: 2.0
+  count_exit: 4.0
+  count_ms: 10000
+
+web:
+  host: 0.0.0.0
+  port: 8080

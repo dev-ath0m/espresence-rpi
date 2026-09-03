@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESPresense-Pi</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header>
+    <h1>ESPresense-Pi</h1>
+    <nav>
+      <a href="{{ url_for('network_page') }}" class="{{ 'active' if active == 'network' else '' }}">Network</a>
+      <a href="{{ url_for('settings_page') }}" class="{{ 'active' if active == 'settings' else '' }}">Settings</a>
+      <a href="{{ url_for('devices_page') }}" class="{{ 'active' if active == 'devices' else '' }}">Devices</a>
+    </nav>
+    <form action="{{ url_for('restart') }}" method="post" onsubmit="return confirm('Restart the ESPresense-Pi service?');">
+      <button type="submit" class="restart-btn">Restart</button>
+    </form>
+  </header>
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>
