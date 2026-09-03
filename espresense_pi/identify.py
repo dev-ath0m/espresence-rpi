@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Set, Tuple
 
+from espresense_pi.irk import is_resolvable_private_address, resolve_rpa
+
 APPLE_COMPANY_ID = 0x004C
 EDDYSTONE_UUID = "0000feaa-0000-1000-8000-00805f9b34fb"
 
@@ -32,6 +34,7 @@ def identify(
     service_data: Dict[str, bytes],
     known_macs: Set[str],
     known_ids: Optional[Dict[str, str]] = None,
+    known_irks: Optional[Dict[str, str]] = None,
 ) -> Tuple[str, Optional[str], Optional[int]]:
     """Return (id, friendly_name, calibrated_rssi_at_1m_or_None)."""
 
@@ -42,6 +45,15 @@ def identify(
 
     if mac_key in known_macs:
         return f"known:{mac_key}", name, None
+
+    if known_irks and is_resolvable_private_address(mac):
+        for irk_hex, device_id in known_irks.items():
+            try:
+                irk_bytes = bytes.fromhex(irk_hex)
+            except ValueError:
+                continue
+            if resolve_rpa(mac, irk_bytes):
+                return device_id, name, None
 
     apple_data = manufacturer_data.get(APPLE_COMPANY_ID)
     if apple_data:

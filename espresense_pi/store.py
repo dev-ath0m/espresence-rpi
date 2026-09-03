@@ -56,6 +56,9 @@ class DeviceStore:
         mac = entry.get("mac")
         if mac:
             result["mac"] = mac.replace(":", "").lower()
+        irk = entry.get("irk")
+        if irk:
+            result["irk"] = irk.replace(":", "").lower()
         rssi = entry.get("rssi@1m", entry.get("rssi_at_1m"))
         if rssi is not None and rssi != "":
             result["rssi@1m"] = int(rssi)
@@ -70,6 +73,14 @@ class DeviceStore:
         """
         with self._lock:
             return {c["mac"]: c["id"] for c in self._configs.values() if c.get("mac")}
+
+    def known_irks(self) -> Dict[str, str]:
+        """Return a {irk (32 lowercase hex chars, no separators): id} map
+        for entries that were enrolled via Bluetooth pairing and had an
+        Identity Resolving Key captured at bonding time.
+        """
+        with self._lock:
+            return {c["irk"]: c["id"] for c in self._configs.values() if c.get("irk")}
 
     def delete(self, device_id: str) -> bool:
         with self._lock:

@@ -66,7 +66,7 @@ def main() -> None:
     def on_advertisement(mac: str, name, rssi: int, manufacturer_data: dict, service_data: dict) -> None:
         service_data_str = {str(k): v for k, v in service_data.items()}
         device_id, friendly_name, rssi_at_1m = identify(
-            mac, name, manufacturer_data, service_data_str, refresh_known_macs(), store.known_ids()
+            mac, name, manufacturer_data, service_data_str, refresh_known_macs(), store.known_ids(), store.known_irks()
         )
 
         ble_cfg = config.get_section("ble")

@@ -13,8 +13,10 @@ dependency of bleak on Linux).
 from __future__ import annotations
 
 import asyncio
+import glob
 import logging
 import re
+from pathlib import Path
 from typing import Optional
 
 from dbus_fast import BusType, MessageType, Variant
@@ -29,6 +31,29 @@ ADAPTER_PATH = "/org/bluez/hci0"
 AGENT_PATH = "/espresense/pi/agent"
 
 _DEV_PATH_RE = re.compile(r"/dev_([0-9A-Fa-f]{2}(?:_[0-9A-Fa-f]{2}){5})$")
+
+
+def get_device_irk(mac: str) -> Optional[str]:
+    """Best-effort read of a bonded device's Identity Resolving Key from
+    BlueZ's local key storage, returned as a lowercase hex string (no
+    separators), or None if the device has no stored IRK (e.g. it was
+    only classic-BR/EDR-bonded with no LE privacy key exchanged).
+    """
+    device_mac = mac.replace("-", ":").upper()
+    for info_path in glob.glob(f"/var/lib/bluetooth/*/{device_mac}/info"):
+        section = None
+        try:
+            lines = Path(info_path).read_text().splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            line = line.strip()
+            if line.startswith("[") and line.endswith("]"):
+                section = line[1:-1]
+                continue
+            if section == "IdentityResolvingKey" and line.startswith("Key="):
+                return line.split("=", 1)[1].strip().lower()
+    return None
 
 
 class _AutoAcceptAgent(ServiceInterface):

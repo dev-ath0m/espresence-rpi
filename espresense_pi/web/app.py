@@ -11,7 +11,7 @@ from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
-from espresense_pi.pairing import enter_pairing_mode_sync
+from espresense_pi.pairing import enter_pairing_mode_sync, get_device_irk
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
@@ -165,7 +165,11 @@ def create_app(config, store, live_state, restart_fn, mqtt_client):
             msg = str(exc) or type(exc).__name__
             return redirect(url_for("devices_page", pair_error=device_id, pair_error_msg=msg[:200]))
 
-        store.upsert({"id": device_id, "alias": alias, "name": name, "mac": mac})
+        entry = {"id": device_id, "alias": alias, "name": name, "mac": mac}
+        irk = get_device_irk(mac)
+        if irk:
+            entry["irk"] = irk
+        store.upsert(entry)
         return redirect(url_for("devices_page", pair_ok=device_id))
 
     @app.route("/devices/delete/<path:device_id>", methods=["POST"])
