@@ -124,6 +124,11 @@ button[type="submit"] {
   border-radius: 6px;
 }
 
+.flash.error {
+  background: #fbe4e4;
+  border-color: #e3a3a3;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -154,4 +159,22 @@ th {
 .inline-form input {
   padding: 0.3rem 0.4rem;
   width: auto;
+}
+
+.inline-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  margin: 0;
+  font-size: 0.8rem;
+}
+
+td.actions {
+  display: flex;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+tr.edit-row td {
+  background: #f7f9fb;
 }

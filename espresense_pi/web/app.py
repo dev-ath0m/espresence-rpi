@@ -5,14 +5,19 @@ mirrors).
 """
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
+
+from espresense_pi.pairing import pair_sync
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
 APP_VERSION = "0.1.0"
+
+logger = logging.getLogger(__name__)
 
 
 def create_app(config, store, live_state, restart_fn, mqtt_client):
@@ -88,20 +93,55 @@ def create_app(config, store, live_state, restart_fn, mqtt_client):
             active="devices",
             live_devices=sorted(live_state.snapshot(), key=lambda d: d.get("distance", 999)),
             configs=store.list(),
+            pair_ok=request.args.get("pair_ok"),
+            pair_error=request.args.get("pair_error"),
+            pair_error_msg=request.args.get("pair_error_msg"),
         )
 
     @app.route("/devices/enroll", methods=["POST"])
     def enroll_device():
-        entry = {
-            "id": request.form.get("id", "").strip(),
-            "alias": request.form.get("alias", "").strip(),
-            "name": request.form.get("name", "").strip(),
-        }
+        action = request.form.get("action", "enroll")
+        device_id = request.form.get("id", "").strip()
+        original_id = request.form.get("original_id", "").strip()
+        mac = request.form.get("mac", "").strip()
+        alias = request.form.get("alias", "").strip()
+        name = request.form.get("name", "").strip()
         rssi_at_1m = request.form.get("rssi_at_1m", "").strip()
+
+        if action == "pair":
+            if not mac:
+                return redirect(url_for("devices_page", pair_error="(missing MAC)"))
+            try:
+                pair_sync(mac)
+            except Exception as exc:
+                logger.exception("Bluetooth pairing with %s failed", mac)
+                msg = str(exc) or type(exc).__name__
+                return redirect(url_for("devices_page", pair_error=mac, pair_error_msg=msg[:200]))
+            mac_clean = mac.replace(":", "").lower()
+            known_macs = set((config.get("ble", "known_macs", "") or "").split())
+            known_macs.add(mac_clean)
+            config.set("ble", "known_macs", " ".join(sorted(known_macs)))
+            mqtt_client.publish_snapshot()
+            device_id = f"known:{mac_clean}"
+            if not alias:
+                alias = device_id
+
+        if not device_id:
+            return redirect(url_for("devices_page"))
+
+        entry = {"id": device_id, "alias": alias or device_id, "name": name}
         if rssi_at_1m:
-            entry["rssi@1m"] = int(rssi_at_1m)
-        if entry["id"]:
-            store.upsert(entry)
+            try:
+                entry["rssi@1m"] = int(rssi_at_1m)
+            except ValueError:
+                pass
+        store.upsert(entry)
+
+        if original_id and original_id != device_id:
+            store.delete(original_id)
+
+        if action == "pair":
+            return redirect(url_for("devices_page", pair_ok=device_id))
         return redirect(url_for("devices_page"))
 
     @app.route("/devices/delete/<path:device_id>", methods=["POST"])

@@ -2,7 +2,11 @@
 {% block content %}
 <h2>Devices</h2>
 
+{% if pair_ok %}<p class="flash">Paired over Bluetooth and enrolled as <strong>{{ pair_ok }}</strong>. Use Edit below to set a friendly name.</p>{% endif %}
+{% if pair_error %}<p class="flash error">Bluetooth pairing with {{ pair_error }} failed{% if pair_error_msg %}: {{ pair_error_msg }}{% endif %}.</p>{% endif %}
+
 <h3>Currently visible</h3>
+<p class="hint">"Enroll" saves an alias/name/rssi@1m for the id ESPresense-Pi already derived from the advertisement. "Pair &amp; Enroll" additionally bonds with the device over Bluetooth (via BlueZ) and enrolls it as <code>known:&lt;mac&gt;</code> -- use this for a specific physical device that doesn't advertise a stable id.</p>
 <table>
   <thead>
     <tr><th>Id</th><th>Name</th><th>MAC</th><th>RSSI</th><th>Distance (m)</th><th>Enroll</th></tr>
@@ -18,10 +22,12 @@
       <td>
         <form method="post" action="{{ url_for('enroll_device') }}" class="inline-form">
           <input type="hidden" name="id" value="{{ d.id }}">
+          <input type="hidden" name="mac" value="{{ d.mac }}">
           <input type="text" name="alias" placeholder="alias" value="{{ d.id }}">
           <input type="text" name="name" placeholder="name" value="{{ d.name or '' }}">
           <input type="number" name="rssi_at_1m" placeholder="rssi@1m" value="{{ d.rssi }}" size="4">
-          <button type="submit">Enroll</button>
+          <button type="submit" name="action" value="enroll">Enroll</button>
+          <button type="submit" name="action" value="pair" onclick="return confirm('Pair with MAC {{ d.mac }} over Bluetooth?');">Pair &amp; Enroll</button>
         </form>
       </td>
     </tr>
@@ -34,7 +40,7 @@
 <h3>Enrolled devices</h3>
 <table>
   <thead>
-    <tr><th>Id</th><th>Alias</th><th>Name</th><th>rssi@1m</th><th></th></tr>
+    <tr><th>Id / type</th><th>Alias</th><th>Name</th><th>rssi@1m</th><th>Actions</th></tr>
   </thead>
   <tbody>
     {% for c in configs %}
@@ -43,9 +49,23 @@
       <td>{{ c.alias }}</td>
       <td>{{ c.name }}</td>
       <td>{{ c.get('rssi@1m', '') }}</td>
-      <td>
-        <form method="post" action="{{ url_for('delete_device', device_id=c.id) }}" onsubmit="return confirm('Remove this enrollment?');">
+      <td class="actions">
+        <button type="button" onclick="toggleEdit('edit-{{ loop.index }}')">Edit</button>
+        <form method="post" action="{{ url_for('delete_device', device_id=c.id) }}" onsubmit="return confirm('Remove this enrollment?');" class="inline-form">
           <button type="submit">Delete</button>
+        </form>
+      </td>
+    </tr>
+    <tr id="edit-{{ loop.index }}" class="edit-row" style="display:none;">
+      <td colspan="5">
+        <form method="post" action="{{ url_for('enroll_device') }}" class="inline-form">
+          <input type="hidden" name="original_id" value="{{ c.id }}">
+          <input type="hidden" name="action" value="enroll">
+          <label>Id / type <input type="text" name="id" value="{{ c.id }}" size="28"></label>
+          <label>Alias <input type="text" name="alias" value="{{ c.alias }}"></label>
+          <label>Name <input type="text" name="name" value="{{ c.name }}"></label>
+          <label>rssi@1m <input type="number" name="rssi_at_1m" value="{{ c.get('rssi@1m', '') }}" size="4"></label>
+          <button type="submit">Save</button>
         </form>
       </td>
     </tr>
@@ -54,4 +74,12 @@
     {% endfor %}
   </tbody>
 </table>
+
+<script>
+function toggleEdit(id) {
+  var row = document.getElementById(id);
+  if (!row) return;
+  row.style.display = (row.style.display === 'none' || !row.style.display) ? 'table-row' : 'none';
+}
+</script>
 {% endblock %}
