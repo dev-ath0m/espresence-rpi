@@ -53,6 +53,9 @@ class DeviceStore:
             "alias": entry.get("alias") or device_id,
             "name": entry.get("name", ""),
         }
+        mac = entry.get("mac")
+        if mac:
+            result["mac"] = mac.replace(":", "").lower()
         rssi = entry.get("rssi@1m", entry.get("rssi_at_1m"))
         if rssi is not None and rssi != "":
             result["rssi@1m"] = int(rssi)
@@ -60,6 +63,13 @@ class DeviceStore:
             self._configs[device_id] = result
             self.save()
         return result
+
+    def known_ids(self) -> Dict[str, str]:
+        """Return a {mac (no colons, lowercase): id} map for entries that
+        were enrolled via Bluetooth pairing (i.e. carry a "mac" field).
+        """
+        with self._lock:
+            return {c["mac"]: c["id"] for c in self._configs.values() if c.get("mac")}
 
     def delete(self, device_id: str) -> bool:
         with self._lock:

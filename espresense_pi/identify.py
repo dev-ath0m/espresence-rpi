@@ -31,10 +31,14 @@ def identify(
     manufacturer_data: Dict[int, bytes],
     service_data: Dict[str, bytes],
     known_macs: Set[str],
+    known_ids: Optional[Dict[str, str]] = None,
 ) -> Tuple[str, Optional[str], Optional[int]]:
     """Return (id, friendly_name, calibrated_rssi_at_1m_or_None)."""
 
     mac_key = mac.replace(":", "").lower()
+
+    if known_ids and mac_key in known_ids:
+        return known_ids[mac_key], name, None
 
     if mac_key in known_macs:
         return f"known:{mac_key}", name, None

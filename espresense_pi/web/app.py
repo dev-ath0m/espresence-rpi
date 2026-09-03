@@ -6,18 +6,33 @@ mirrors).
 from __future__ import annotations
 
 import logging
+import re
 from pathlib import Path
 
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 
-from espresense_pi.pairing import pair_sync
+from espresense_pi.pairing import enter_pairing_mode_sync
 
 TEMPLATE_DIR = Path(__file__).parent / "templates"
 STATIC_DIR = Path(__file__).parent / "static"
 
 APP_VERSION = "0.1.0"
 
+# Mirrors the device type list from upstream ESPresense's own enrollment UI
+# (ui/src/routes/devices/+page.svelte).
+DEVICE_TYPES = [
+    "watch", "wallet", "ipad", "phone", "airpods", "laptop",
+    "node", "keys", "therm", "flora", "tile",
+]
+
 logger = logging.getLogger(__name__)
+
+
+def _kebab_case_id(name: str, device_type: str = "") -> str:
+    words = [w for w in name.lower().split() if w != device_type.lower()]
+    slug = "-".join(words).replace("'", "")
+    slug = re.sub(r"[^a-z0-9-]+", "-", slug)
+    return re.sub(r"^-+|-+$", "", slug)
 
 
 def create_app(config, store, live_state, restart_fn, mqtt_client):
@@ -93,6 +108,7 @@ def create_app(config, store, live_state, restart_fn, mqtt_client):
             active="devices",
             live_devices=sorted(live_state.snapshot(), key=lambda d: d.get("distance", 999)),
             configs=store.list(),
+            device_types=DEVICE_TYPES,
             pair_ok=request.args.get("pair_ok"),
             pair_error=request.args.get("pair_error"),
             pair_error_msg=request.args.get("pair_error_msg"),
@@ -100,31 +116,11 @@ def create_app(config, store, live_state, restart_fn, mqtt_client):
 
     @app.route("/devices/enroll", methods=["POST"])
     def enroll_device():
-        action = request.form.get("action", "enroll")
         device_id = request.form.get("id", "").strip()
         original_id = request.form.get("original_id", "").strip()
-        mac = request.form.get("mac", "").strip()
         alias = request.form.get("alias", "").strip()
         name = request.form.get("name", "").strip()
         rssi_at_1m = request.form.get("rssi_at_1m", "").strip()
-
-        if action == "pair":
-            if not mac:
-                return redirect(url_for("devices_page", pair_error="(missing MAC)"))
-            try:
-                pair_sync(mac)
-            except Exception as exc:
-                logger.exception("Bluetooth pairing with %s failed", mac)
-                msg = str(exc) or type(exc).__name__
-                return redirect(url_for("devices_page", pair_error=mac, pair_error_msg=msg[:200]))
-            mac_clean = mac.replace(":", "").lower()
-            known_macs = set((config.get("ble", "known_macs", "") or "").split())
-            known_macs.add(mac_clean)
-            config.set("ble", "known_macs", " ".join(sorted(known_macs)))
-            mqtt_client.publish_snapshot()
-            device_id = f"known:{mac_clean}"
-            if not alias:
-                alias = device_id
 
         if not device_id:
             return redirect(url_for("devices_page"))
@@ -140,9 +136,37 @@ def create_app(config, store, live_state, restart_fn, mqtt_client):
         if original_id and original_id != device_id:
             store.delete(original_id)
 
-        if action == "pair":
-            return redirect(url_for("devices_page", pair_ok=device_id))
         return redirect(url_for("devices_page"))
+
+    @app.route("/devices/pair", methods=["POST"])
+    def pair_device():
+        existing_id = request.form.get("existing_id", "").strip()
+        device_type = request.form.get("device_type", "").strip()
+        name = request.form.get("name", "").strip()
+
+        if not name:
+            return redirect(url_for("devices_page", pair_error="(missing name)"))
+
+        if existing_id:
+            existing = store.get(existing_id) or {}
+            device_id = existing_id
+            alias = existing.get("alias", existing_id)
+        else:
+            device_id = f"{device_type}:{_kebab_case_id(name, device_type)}" if device_type else _kebab_case_id(name)
+            alias = device_id
+
+        if not device_id or device_id.endswith(":"):
+            return redirect(url_for("devices_page", pair_error="(could not generate an id from that name)"))
+
+        try:
+            mac = enter_pairing_mode_sync(timeout=60.0)
+        except Exception as exc:
+            logger.exception("Bluetooth pairing failed")
+            msg = str(exc) or type(exc).__name__
+            return redirect(url_for("devices_page", pair_error=device_id, pair_error_msg=msg[:200]))
+
+        store.upsert({"id": device_id, "alias": alias, "name": name, "mac": mac})
+        return redirect(url_for("devices_page", pair_ok=device_id))
 
     @app.route("/devices/delete/<path:device_id>", methods=["POST"])
     def delete_device(device_id):

@@ -2,8 +2,8 @@
 {% block content %}
 <h2>Devices</h2>
 
-{% if pair_ok %}<p class="flash">Paired over Bluetooth and enrolled as <strong>{{ pair_ok }}</strong>. Use Edit below to set a friendly name.</p>{% endif %}
-{% if pair_error %}<p class="flash error">Bluetooth pairing with {{ pair_error }} failed{% if pair_error_msg %}: {{ pair_error_msg }}{% endif %}.</p>{% endif %}
+{% if pair_ok %}<p class="flash">The device has been enrolled. New device ID is: <strong>{{ pair_ok }}</strong>. Use Edit below to adjust its rssi@1m.</p>{% endif %}
+{% if pair_error %}<p class="flash error">Bluetooth pairing failed{% if pair_error_msg %}: {{ pair_error_msg }}{% endif %}.</p>{% endif %}
 
 <h3>Currently visible</h3>
 <p class="hint">"Enroll" saves an alias/name/rssi@1m for the id ESPresense-Pi already derived from the advertisement.</p>
@@ -36,14 +36,26 @@
 </table>
 
 <h3>Enrolled devices</h3>
-<p class="hint">Pair with a specific physical device over Bluetooth (via BlueZ) and enroll it as <code>known:&lt;mac&gt;</code> -- use this for a device that doesn't advertise a stable id.</p>
-<form method="post" action="{{ url_for('enroll_device') }}" class="inline-form pair-form">
-  <input type="hidden" name="action" value="pair">
-  <label>MAC address <input type="text" name="mac" placeholder="AA:BB:CC:DD:EE:FF" required></label>
-  <label>Alias <input type="text" name="alias" placeholder="optional"></label>
-  <label>Name <input type="text" name="name" placeholder="optional"></label>
-  <label>rssi@1m <input type="number" name="rssi_at_1m" placeholder="optional" size="4"></label>
-  <button type="submit" onclick="return confirm('Attempt Bluetooth pairing with this MAC address and enroll it?');">Pair &amp; enroll new device</button>
+<p class="hint">Puts the Pi into Bluetooth pairing mode for 60 seconds -- no MAC address needed. During that window, open Bluetooth settings on the device you want to enroll (e.g. the Bluetooth app on an Apple Watch) and pair with this Pi. Whichever device pairs first is enrolled under the id below.</p>
+<form method="post" action="{{ url_for('pair_device') }}" class="inline-form pair-form" onsubmit="return confirm('Put the Pi into Bluetooth pairing mode now for 60 seconds?');">
+  <label>Existing device
+    <select name="existing_id">
+      <option value="">New device</option>
+      {% for c in configs %}
+      <option value="{{ c.id }}">{{ c.alias }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Type
+    <select name="device_type">
+      <option value="">Select device type</option>
+      {% for t in device_types %}
+      <option value="{{ t }}">{{ t }}</option>
+      {% endfor %}
+    </select>
+  </label>
+  <label>Name <input type="text" name="name" placeholder="Enter name" required></label>
+  <button type="submit">Pair &amp; enroll new device</button>
 </form>
 <table>
   <thead>
