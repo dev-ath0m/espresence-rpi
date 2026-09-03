@@ -169,6 +169,15 @@ th {
   font-size: 0.8rem;
 }
 
+.pair-form {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.7rem 0.9rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
 td.actions {
   display: flex;
   gap: 0.3rem;

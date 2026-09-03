@@ -6,7 +6,7 @@
 {% if pair_error %}<p class="flash error">Bluetooth pairing with {{ pair_error }} failed{% if pair_error_msg %}: {{ pair_error_msg }}{% endif %}.</p>{% endif %}
 
 <h3>Currently visible</h3>
-<p class="hint">"Enroll" saves an alias/name/rssi@1m for the id ESPresense-Pi already derived from the advertisement. "Pair &amp; Enroll" additionally bonds with the device over Bluetooth (via BlueZ) and enrolls it as <code>known:&lt;mac&gt;</code> -- use this for a specific physical device that doesn't advertise a stable id.</p>
+<p class="hint">"Enroll" saves an alias/name/rssi@1m for the id ESPresense-Pi already derived from the advertisement.</p>
 <table>
   <thead>
     <tr><th>Id</th><th>Name</th><th>MAC</th><th>RSSI</th><th>Distance (m)</th><th>Enroll</th></tr>
@@ -22,12 +22,10 @@
       <td>
         <form method="post" action="{{ url_for('enroll_device') }}" class="inline-form">
           <input type="hidden" name="id" value="{{ d.id }}">
-          <input type="hidden" name="mac" value="{{ d.mac }}">
           <input type="text" name="alias" placeholder="alias" value="{{ d.id }}">
           <input type="text" name="name" placeholder="name" value="{{ d.name or '' }}">
           <input type="number" name="rssi_at_1m" placeholder="rssi@1m" value="{{ d.rssi }}" size="4">
-          <button type="submit" name="action" value="enroll">Enroll</button>
-          <button type="submit" name="action" value="pair" onclick="return confirm('Pair with MAC {{ d.mac }} over Bluetooth?');">Pair &amp; Enroll</button>
+          <button type="submit">Enroll</button>
         </form>
       </td>
     </tr>
@@ -38,6 +36,15 @@
 </table>
 
 <h3>Enrolled devices</h3>
+<p class="hint">Pair with a specific physical device over Bluetooth (via BlueZ) and enroll it as <code>known:&lt;mac&gt;</code> -- use this for a device that doesn't advertise a stable id.</p>
+<form method="post" action="{{ url_for('enroll_device') }}" class="inline-form pair-form">
+  <input type="hidden" name="action" value="pair">
+  <label>MAC address <input type="text" name="mac" placeholder="AA:BB:CC:DD:EE:FF" required></label>
+  <label>Alias <input type="text" name="alias" placeholder="optional"></label>
+  <label>Name <input type="text" name="name" placeholder="optional"></label>
+  <label>rssi@1m <input type="number" name="rssi_at_1m" placeholder="optional" size="4"></label>
+  <button type="submit" onclick="return confirm('Attempt Bluetooth pairing with this MAC address and enroll it?');">Pair &amp; enroll new device</button>
+</form>
 <table>
   <thead>
     <tr><th>Id / type</th><th>Alias</th><th>Name</th><th>rssi@1m</th><th>Actions</th></tr>
