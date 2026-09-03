@@ -48,21 +48,22 @@ class DeviceStore:
         if not entry.get("id"):
             raise ValueError("id is required")
         device_id = entry["id"]
-        result: Dict[str, Any] = {
-            "id": device_id,
-            "alias": entry.get("alias") or device_id,
-            "name": entry.get("name", ""),
-        }
-        mac = entry.get("mac")
-        if mac:
-            result["mac"] = mac.replace(":", "").lower()
-        irk = entry.get("irk")
-        if irk:
-            result["irk"] = irk.replace(":", "").lower()
-        rssi = entry.get("rssi@1m", entry.get("rssi_at_1m"))
-        if rssi is not None and rssi != "":
-            result["rssi@1m"] = int(rssi)
         with self._lock:
+            existing = self._configs.get(device_id, {})
+            result: Dict[str, Any] = {
+                "id": device_id,
+                "alias": entry.get("alias") or existing.get("alias") or device_id,
+                "name": entry.get("name") if entry.get("name") is not None else existing.get("name", ""),
+            }
+            mac = entry.get("mac") or existing.get("mac")
+            if mac:
+                result["mac"] = mac.replace(":", "").lower()
+            irk = entry.get("irk") or existing.get("irk")
+            if irk:
+                result["irk"] = irk.replace(":", "").lower()
+            rssi = entry.get("rssi@1m", entry.get("rssi_at_1m", existing.get("rssi@1m")))
+            if rssi is not None and rssi != "":
+                result["rssi@1m"] = int(rssi)
             self._configs[device_id] = result
             self.save()
         return result

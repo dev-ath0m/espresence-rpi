@@ -135,6 +135,10 @@ class EspresenseMqtt:
             try:
                 data = json.loads(payload)
                 data["id"] = data.get("id", device_id)
+                if device_id.startswith("irk:") and not data.get("irk"):
+                    data["irk"] = device_id.split(":", 1)[1].strip().lower()
+                elif re.fullmatch(r"[0-9a-fA-F]{12}", device_id) and not data.get("mac"):
+                    data["mac"] = device_id.lower()
                 self.store.upsert(data)
                 logger.info("Updated enrolled device config for %s via MQTT", device_id)
             except Exception:
