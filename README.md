@@ -53,7 +53,7 @@ This will:
 4. Create `config.yaml` from `config.example.yaml` if it doesn't exist yet
 5. Install and start the `espresense-pi` systemd service
 
-The web UI is then available at `http://<pi-ip>:8080`.
+The web UI is then available at `http://<pi-ip>`.
 
 To uninstall: `sudo ./scripts/uninstall.sh` (add `--purge` to also delete `/opt/espresense-pi`, including your config).
 
@@ -122,15 +122,17 @@ mosquitto_sub -h 192.168.178.6 -v -t "espresense/devices/#"
 
 This is a from-scratch Python implementation guided by the public
 [espresense.com](https://espresense.com/) documentation (topic names, config
-semantics, REST shapes) — no ESP32 firmware source was copied. Notable gaps
-versus the real firmware:
+semantics, REST shapes). The one place that deliberately follows the firmware
+closely is `identify.py`: device ids are fingerprinted with the same rules and
+the same priority order as `BleFingerprint.cpp`, because an ESP32 node and a Pi
+node have to publish identical ids for the same device or Companion sees two
+devices instead of one.
 
-- **No Apple continuity-protocol fingerprinting** (the real firmware derives
-  ids like `apple:iphone15-3`). This implementation identifies devices as
-  `ibeacon:<uuid>_<major>_<minor>`, `eddy:<namespace>_<instance>`,
-  `known:<mac>` (if enrolled by MAC), or `generic:<mac>` as a fallback.
-- **No IRK-based private-address resolution** for Apple devices.
-- **No active BLE/GATT querying** (`query`/`requery_ms` settings, Mi Flora, etc.).
+Notable gaps versus the real firmware:
+
+- **No active BLE/GATT querying** (`query`/`requery_ms` settings, Mi Flora,
+  etc.), so ids that come from reading a characteristic — `name:` via GATT,
+  `apple:<model>` — are never produced.
 - **No captive Wi-Fi portal** — the Pi already has network connectivity, so
   there's no "Network" onboarding flow; the Network page only configures the
   room name and MQTT.

@@ -12,9 +12,23 @@ from typing import Callable, Optional
 
 from bleak import BleakScanner
 
+from espresense_pi.identify import Advertisement
+
 logger = logging.getLogger(__name__)
 
-AdvertisementCallback = Callable[[str, Optional[str], int, dict, dict], None]
+AdvertisementCallback = Callable[[Advertisement], None]
+
+
+def _address_type(device) -> Optional[str]:
+    """"public" or "random", from the BlueZ device properties.
+
+    The firmware fingerprints public and random addresses differently, so we
+    have to ask the backend rather than guess from the address bits.
+    """
+    details = getattr(device, "details", None)
+    props = details.get("props") if isinstance(details, dict) else None
+    value = props.get("AddressType") if isinstance(props, dict) else None
+    return value if isinstance(value, str) else None
 
 
 class BleScanner:
@@ -46,15 +60,23 @@ class BleScanner:
 
     def _detection_callback(self, device, advertisement_data) -> None:
         try:
-            manufacturer_data = advertisement_data.manufacturer_data or {}
-            service_data = advertisement_data.service_data or {}
-            name = advertisement_data.local_name or device.name
             rssi = advertisement_data.rssi
             if rssi is None:
                 rssi = getattr(device, "rssi", None)
             if rssi is None:
                 return
-            self._on_advertisement(device.address, name, rssi, manufacturer_data, service_data)
+            self._on_advertisement(Advertisement(
+                address=device.address,
+                address_type=_address_type(device),
+                # Only the advertised name: BlueZ makes device.name fall back to
+                # a MAC-derived alias, which would turn into a bogus "name:" id.
+                name=advertisement_data.local_name,
+                rssi=rssi,
+                tx_power=advertisement_data.tx_power,
+                manufacturer_data=advertisement_data.manufacturer_data or {},
+                service_data={str(k): v for k, v in (advertisement_data.service_data or {}).items()},
+                service_uuids=list(advertisement_data.service_uuids or ()),
+            ))
         except Exception:
             logger.exception("Error handling BLE advertisement")
 

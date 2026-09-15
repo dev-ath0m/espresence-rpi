@@ -63,10 +63,11 @@ def main() -> None:
             known_macs_cache["set"] = {m.strip().lower() for m in raw.split() if m.strip()}
         return known_macs_cache["set"]
 
-    def on_advertisement(mac: str, name, rssi: int, manufacturer_data: dict, service_data: dict) -> None:
-        service_data_str = {str(k): v for k, v in service_data.items()}
+    def on_advertisement(adv) -> None:
+        mac = adv.address
+        rssi = adv.rssi
         device_id, friendly_name, rssi_at_1m = identify(
-            mac, name, manufacturer_data, service_data_str, refresh_known_macs(), store.known_ids(), store.known_irks()
+            adv, refresh_known_macs(), store.known_ids(), store.known_irks()
         )
 
         ble_cfg = config.get_section("ble")
@@ -134,7 +135,7 @@ def main() -> None:
 
     web_cfg = config.get_section("web")
     host = web_cfg.get("host", "0.0.0.0")
-    port = int(web_cfg.get("port", 8080))
+    port = int(web_cfg.get("port", 80))
     logger.info("Starting web UI on %s:%s", host, port)
     from waitress import serve
 

@@ -27,10 +27,9 @@ so this implementation could be wire-compatible:
 | https://espresense.com/configuration/rest-api/ | REST endpoint shapes: `GET /json`, `GET /json/devices`, `GET/POST/DELETE /json/configs`, `POST /restart`, example JSON payloads |
 | https://espresense.com/configuration/settings/ | Human-readable descriptions of each settings-page field (used to write equivalent field labels/help text in this project's own HTML templates) |
 | https://espresense.com/configuration/network/ | Network/MQTT config page field list (room name, MQTT server/port/user/pass, discovery toggle, telemetry/devices publish toggles) |
-| https://github.com/ESPresense/ESPresense (README + repo file listing only) | Confirmed project purpose/license (AGPL-3.0) and high-level repo layout; **no source files were opened or copied** |
+| https://github.com/ESPresense/ESPresense — `main/BleFingerprint.cpp`, `main/BleFingerprint.h`, `main/BleUuids.h`, `components/utils/string_utils.cpp` | The device-id fingerprinting rules and their priority order. `espresense_pi/identify.py` is a **direct port** of this logic (see the licensing note below) |
 
-Everything else — the actual Python code, the BLE-advertisement parsing
-logic (iBeacon/Eddystone/generic heuristics), the Flask routes, the HTML
+Everything else — the rest of the Python code, the Flask routes, the HTML
 templates/CSS for the Network/Settings/Devices pages, the systemd unit, and
 the install/uninstall scripts — was **written from scratch** for this
 project. The web UI is visually and structurally an independent, original
@@ -40,22 +39,23 @@ ESPresense node) but none of ESPresense's actual UI code/assets were copied.
 
 ### Why this matters (licensing)
 
-The real ESPresense firmware is AGPL-3.0 licensed. Because this project
-reimplements the documented protocol independently rather than copying or
-adapting ESPresense's source, it is not a derivative work of that codebase.
-If you plan to redistribute this repo publicly, it's still worth adding your
-own license file reflecting your intentions.
+The real ESPresense firmware is AGPL-3.0 licensed. Most of this project
+reimplements the documented protocol independently, but
+`espresense_pi/identify.py` is a deliberate port of `BleFingerprint.cpp`:
+nodes that disagree about a device's id are useless to ESPresense Companion,
+so the ids have to match byte for byte. Treat that file as AGPL-3.0 derived
+work and license this repo accordingly if you redistribute it.
 
 ## 3. Implementation phase — how the code was assembled
 
 1. Modeled the on-disk config (`config.yaml`) and enrolled-device store
    (`devices.json`) after the settings/REST semantics above.
-2. Wrote `espresense_pi/identify.py` to derive an ESPresense-style id
-   (`ibeacon:...`, `eddy:...`, `known:<mac>`, `generic:<mac>`) from raw BLE
-   advertisement fields exposed by `bleak` — this is an original, simplified
-   heuristic, not a port of ESPresense's Apple continuity-protocol
-   fingerprinting (that part of the real firmware is significantly more
-   involved and is called out as a known gap in the README).
+2. Wrote `espresense_pi/identify.py` as a port of the firmware's
+   `BleFingerprint.cpp`: the same candidate ids (`<mac>`, `irk:`, `known:`,
+   `name:`, `ad:`, `sd:`, `md:`, `iBeacon:`, `apple:`, `msft:`, vendor
+   prefixes, …) and the same `ID_TYPE_*` priority ordering, adapted to the
+   advertisement fields `bleak` exposes. It started as an original,
+   simplified heuristic, but that produced ids no ESP32 node agreed with.
 3. Wrote `espresense_pi/distance.py` implementing the standard log-distance
    path-loss formula `distance = 10 ^ ((ref_rssi - rssi) / (10 * absorption))`,
    which is the same general model described in ESPresense's calibration

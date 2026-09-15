@@ -48,7 +48,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "web": {
         "host": "0.0.0.0",
-        "port": 8080,
+        "port": 80,
     },
 }
 
