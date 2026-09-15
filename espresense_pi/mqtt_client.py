@@ -175,6 +175,17 @@ class EspresenseMqtt:
         logger.debug("Ignoring unsupported set topic key=%s", key)
 
     # -- publishing ------------------------------------------------------
+    def publish_availability(self) -> None:
+        """Re-assert the retained online status.
+
+        The broker publishes our Last Will only once it reaps the stale
+        session, which can happen *after* we already reconnected and
+        published "online". Re-publishing periodically repairs that race.
+        """
+        if not self._connected:
+            return
+        self.client.publish(self._room_topic("status"), "online", qos=1, retain=True)
+
     def publish_snapshot(self) -> None:
         if not self._connected:
             return

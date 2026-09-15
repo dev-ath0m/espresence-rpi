@@ -47,6 +47,7 @@ class TelemetryPublisher:
     def _run(self) -> None:
         while not self._stop.wait(self.interval_s):
             try:
+                self.mqtt_client.publish_availability()
                 self.mqtt_client.publish_telemetry(collect())
             except Exception:
                 logger.exception("Failed to publish telemetry")
