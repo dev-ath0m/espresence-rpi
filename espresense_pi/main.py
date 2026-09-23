@@ -110,10 +110,13 @@ def main() -> None:
 
         tracker.note_seen(device_id)
         if tracker.should_report(device_id, distance):
-            # Publish the *adjusted* rssi, as the ESP32 firmware does, so that
-            # distance stays reproducible from the payload alone.
+            # Publish the *adjusted* rssi and the reference actually used, as the
+            # ESP32 firmware does, so that distance is reproducible from the
+            # payload alone. Reporting the advertised measured power here while
+            # computing with an enrolled "rssi@1m" override made the payload
+            # self-inconsistent and silently unexplainable to consumers.
             mqtt_client.publish_device(
-                publish_id, display_name, mac, rssi_adj, distance, rssi_at_1m, rx_adj
+                publish_id, display_name, mac, rssi_adj, distance, ref_rssi, rx_adj
             )
 
     scanner = BleScanner(on_advertisement=on_advertisement)
