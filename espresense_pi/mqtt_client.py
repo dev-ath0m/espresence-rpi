@@ -92,17 +92,23 @@ class EspresenseMqtt:
             self.client.publish(self._room_topic("status"), "offline", qos=1, retain=True)
         except Exception:
             pass
-        self.client.loop_stop()
+        # disconnect() only queues the DISCONNECT packet - the network loop has to
+        # still be running to put it on the wire. Stopping the loop first makes the
+        # broker see an abnormal drop and fire the last will, which republishes a
+        # retained "offline" on a room we may have just cleared.
         try:
             self.client.disconnect()
         except Exception:
             pass
+        self.client.loop_stop()
 
     def reconnect(self) -> None:
         """Reconnect, e.g. after MQTT host/credentials/room name changed."""
         try:
-            self.client.loop_stop()
+            # Disconnect before stopping the loop, so the broker gets a clean
+            # DISCONNECT and discards the last will rather than publishing it.
             self.client.disconnect()
+            self.client.loop_stop()
         except Exception:
             pass
         self.client = mqtt.Client()

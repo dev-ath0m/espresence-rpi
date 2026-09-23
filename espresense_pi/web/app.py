@@ -50,7 +50,14 @@ def create_app(config, store, live_state, restart_fn, mqtt_client):
     def network_page():
         if request.method == "POST":
             new_room = request.form.get("room_name", "").strip() or config.room_name
+            # Same rule as the MQTT rename path: capture the slug we are published
+            # under before the config changes, so the old room can be cleared while
+            # this connection is still alive. Skipping it strands the previous name
+            # on the broker as a retained, permanently-"online" ghost node.
+            old_slug = mqtt_client.room_slug
             config.update_section("room", {"name": new_room})
+            if mqtt_client.room_slug != old_slug:
+                mqtt_client.clear_room(old_slug)
             config.update_section("mqtt", {
                 "host": request.form.get("mqtt_host", "").strip(),
                 "port": int(request.form.get("mqtt_port", 1883) or 1883),
