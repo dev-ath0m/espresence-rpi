@@ -208,6 +208,7 @@ class EspresenseMqtt:
         rssi: int,
         distance: float,
         rssi_at_1m: Optional[int] = None,
+        rx_adj: int = 0,
     ) -> None:
         if not self._connected or not self.config.get("mqtt", "pub_devices", True):
             return
@@ -215,6 +216,7 @@ class EspresenseMqtt:
             "id": device_id,
             "distance": distance,
             "rssi": rssi,
+            "rxAdj": rx_adj,
             "mac": mac.replace(":", "").lower(),
         }
         if name:

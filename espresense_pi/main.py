@@ -88,7 +88,13 @@ def main() -> None:
             if enrolled.get("rssi@1m") is not None:
                 ref_rssi = enrolled["rssi@1m"]
 
-        rssi_adj = rssi + int(ble_cfg.get("rx_adj_rssi", 0))
+        # The ESP32 firmware *subtracts* rx_adj_rssi, so a node that hears
+        # everything too loudly needs a positive value. Verified against the
+        # firmware: flipping rx_adj_rssi 0 -> 34 moved the published RSSI from
+        # -48.3 to -82.1 dBm. Adding it here would drive calibration the wrong
+        # way and make values non-portable between a Pi node and an ESP32 node.
+        rx_adj = int(ble_cfg.get("rx_adj_rssi", 0))
+        rssi_adj = rssi - rx_adj
         distance = rssi_to_distance(rssi_adj, ref_rssi, ble_cfg.get("absorption", 2.7))
 
         visible = 0 <= distance <= ble_cfg.get("max_distance", 16.0)
@@ -104,7 +110,11 @@ def main() -> None:
 
         tracker.note_seen(device_id)
         if tracker.should_report(device_id, distance):
-            mqtt_client.publish_device(publish_id, display_name, mac, rssi, distance, rssi_at_1m)
+            # Publish the *adjusted* rssi, as the ESP32 firmware does, so that
+            # distance stays reproducible from the payload alone.
+            mqtt_client.publish_device(
+                publish_id, display_name, mac, rssi_adj, distance, rssi_at_1m, rx_adj
+            )
 
     scanner = BleScanner(on_advertisement=on_advertisement)
     scanner.start()
