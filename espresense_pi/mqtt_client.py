@@ -37,6 +37,12 @@ def slugify(value: str) -> str:
 
 
 class EspresenseMqtt:
+    # Every key publish_snapshot() retains, so a rename can clear them all again.
+    SNAPSHOT_KEYS = (
+        "max_distance", "absorption", "ref_rssi", "tx_ref_rssi", "rx_adj_rssi",
+        "skip_distance", "skip_ms", "include", "exclude", "known_macs", "count_ids",
+    )
+
     def __init__(
         self,
         config,
@@ -186,16 +192,37 @@ class EspresenseMqtt:
             return
         self.client.publish(self._room_topic("status"), "online", qos=1, retain=True)
 
+    def clear_room(self, slug: str) -> None:
+        """Drop the retained topics of a room slug we no longer publish as.
+
+        Renaming a node changes room_slug, which strands the previous room's
+        retained settings on the broker with status "online" forever: its Last
+        Will was registered against the old topic and gets replaced rather than
+        fired, so nothing ever marks it offline. The old name then lingers as a
+        node that looks alive. Publish it offline, then clear every retained
+        key with a zero-length payload.
+        """
+        base = f"{self.base_topic}/rooms/{slug}"
+        try:
+            self.client.publish(f"{base}/status", "offline", qos=1, retain=True)
+            for key in ("status", "name") + self.SNAPSHOT_KEYS:
+                self.client.publish(f"{base}/{key}", None, qos=1, retain=True)
+            prefix = self.config.get("mqtt", "discovery_prefix", "homeassistant")
+            self.client.publish(
+                f"{prefix}/binary_sensor/espresense_pi_{slug}/status/config",
+                None, qos=1, retain=True,
+            )
+            logger.info("Cleared retained topics for old room '%s'", slug)
+        except Exception:
+            logger.exception("Failed to clear retained topics for room '%s'", slug)
+
     def publish_snapshot(self) -> None:
         if not self._connected:
             return
         ble_cfg = self.config.get_section("ble")
         self.client.publish(self._room_topic("status"), "online", qos=1, retain=True)
         self.client.publish(self._room_topic("name"), self.config.room_name, qos=1, retain=True)
-        for key in (
-            "max_distance", "absorption", "ref_rssi", "tx_ref_rssi", "rx_adj_rssi",
-            "skip_distance", "skip_ms", "include", "exclude", "known_macs", "count_ids",
-        ):
+        for key in self.SNAPSHOT_KEYS:
             self.client.publish(self._room_topic(key), str(ble_cfg.get(key, "")), qos=0, retain=True)
         if self.config.get("mqtt", "discovery", True):
             self._publish_discovery()

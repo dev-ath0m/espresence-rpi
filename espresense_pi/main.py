@@ -48,7 +48,14 @@ def main() -> None:
     live_state = LiveState()
 
     def on_rename(new_name: str) -> None:
+        # Capture the slug we are currently published under *before* the config
+        # changes, then clear it while the old connection is still up. Otherwise
+        # the previous room name is stranded on the broker as a retained,
+        # permanently-"online" ghost node.
+        old_slug = mqtt_client.room_slug
         config.set("room", "name", new_name)
+        if mqtt_client.room_slug != old_slug:
+            mqtt_client.clear_room(old_slug)
         mqtt_client.reconnect()
 
     mqtt_client = EspresenseMqtt(config, store, on_restart=restart_process, on_rename=on_rename)
